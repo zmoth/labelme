@@ -1206,17 +1206,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 item.shape().description == shape.description for item in items[1:]
             )
 
-        if not edit_text:
-            self.labelDialog.edit.setDisabled(True)
-            self.labelDialog.labelList.setDisabled(True)
-        if not edit_flags:
-            for i in range(self.labelDialog.flagsLayout.count()):
-                self.labelDialog.flagsLayout.itemAt(i).setDisabled(True)  # type: ignore[union-attr]
-        if not edit_group_id:
-            self.labelDialog.edit_group_id.setDisabled(True)
-        if not edit_description:
-            self.labelDialog.editDescription.setDisabled(True)
-
         text, flags, group_id, description = self.labelDialog.popUp(
             text=shape.label if edit_text else "",
             flags=shape.flags if edit_flags else None,
@@ -1224,31 +1213,10 @@ class MainWindow(QtWidgets.QMainWindow):
             description=shape.description if edit_description else None,
         )
 
-        if not edit_text:
-            self.labelDialog.edit.setDisabled(False)
-            self.labelDialog.labelList.setDisabled(False)
-        if not edit_flags:
-            for i in range(self.labelDialog.flagsLayout.count()):
-                self.labelDialog.flagsLayout.itemAt(i).setDisabled(False)  # type: ignore[union-attr]
-        if not edit_group_id:
-            self.labelDialog.edit_group_id.setDisabled(False)
-        if not edit_description:
-            self.labelDialog.editDescription.setDisabled(False)
-
-        if text is None:
-            assert flags is None
-            assert group_id is None
-            assert description is None
-            return
-
-        if not self.validateLabel(text):
-            self.errorMessage(
-                self.tr("Invalid label"),
-                self.tr("Invalid label '{}' with validation type '{}'").format(
-                    text, self._config["validate_label"]
-                ),
-            )
-            return
+        edit_text = text != None and text != ""
+        edit_flags = flags != None
+        edit_group_id = group_id != None
+        edit_description = description != None
 
         self.canvas.storeShapes()
         for item in items:
@@ -1271,7 +1239,13 @@ class MainWindow(QtWidgets.QMainWindow):
                     )
                 )
             else:
-                item.setText("{} ({})".format(shape.label, shape.group_id))
+                item.setText(
+                    '{} ({}) <font color="#{:02x}{:02x}{:02x}">●</font>'.format(
+                        html.escape(shape.label),
+                        shape.group_id,
+                        *shape.fill_color.getRgb()[:3],
+                    )
+                )
             self.setDirty()
             if self.uniqLabelList.findItemByLabel(shape.label) is None:
                 item = self.uniqLabelList.createItemFromLabel(shape.label)

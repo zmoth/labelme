@@ -133,8 +133,8 @@ class LabelDialog(QtWidgets.QDialog):
             text = text.strip()
         else:
             text = text.trimmed()  # type: ignore[attr-defined]
-        if text:
-            self.accept()
+
+        self.accept()
 
     def labelDoubleClicked(self, item):
         self.validate()
