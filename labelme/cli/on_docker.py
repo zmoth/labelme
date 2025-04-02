@@ -64,7 +64,7 @@ def labelme_on_docker(in_file, out_file):
         out_file_a = osp.abspath(out_file)
         out_file_b = osp.join("/home/developer", osp.basename(out_file))
         cmd += " -v {0}:{1}".format(out_file_a, out_file_b)
-    cmd += " wkentaro/labelme labelme {0}".format(in_file_b)
+    cmd += " zmoth/labelme labelme {0}".format(in_file_b)
     if out_file:
         cmd += " -O {0}".format(out_file_b)
     subprocess.call(shlex.split(cmd))
