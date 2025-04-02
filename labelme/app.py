@@ -181,6 +181,7 @@ class MainWindow(QtWidgets.QMainWindow):
             Qt.Horizontal: scrollArea.horizontalScrollBar(),  # type: ignore[attr-defined]
         }
         self.canvas.scrollRequest.connect(self.scrollRequest)
+        self.canvas.moveRequest.connect(self.moveRequest)
 
         self.canvas.newShape.connect(self.newShape)
         self.canvas.shapeMoved.connect(self.setDirty)
@@ -373,13 +374,15 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         createAiPolygonMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                model_name=self._selectAiModelComboBox.itemData(  # type: ignore[has-type]
-                    self._selectAiModelComboBox.currentIndex()  # type: ignore[has-type]
+            lambda: (
+                self.canvas.initializeAiModel(
+                    model_name=self._selectAiModelComboBox.itemData(  # type: ignore[has-type]
+                        self._selectAiModelComboBox.currentIndex()  # type: ignore[has-type]
+                    )
                 )
+                if self.canvas.createMode == "ai_polygon"
+                else None
             )
-            if self.canvas.createMode == "ai_polygon"
-            else None
         )
         createAiMaskMode = action(
             self.tr("Create AI-Mask"),
@@ -390,13 +393,15 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
         createAiMaskMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                model_name=self._selectAiModelComboBox.itemData(  # type: ignore[has-type]
-                    self._selectAiModelComboBox.currentIndex()  # type: ignore[has-type]
+            lambda: (
+                self.canvas.initializeAiModel(
+                    model_name=self._selectAiModelComboBox.itemData(  # type: ignore[has-type]
+                        self._selectAiModelComboBox.currentIndex()  # type: ignore[has-type]
+                    )
                 )
+                if self.canvas.createMode == "ai_mask"
+                else None
             )
-            if self.canvas.createMode == "ai_mask"
-            else None
         )
         editMode = action(
             self.tr("Edit Polygons"),
@@ -817,11 +822,13 @@ class MainWindow(QtWidgets.QMainWindow):
             model_index = 0
         self._selectAiModelComboBox.setCurrentIndex(model_index)
         self._selectAiModelComboBox.currentIndexChanged.connect(
-            lambda index: self.canvas.initializeAiModel(
-                model_name=self._selectAiModelComboBox.itemData(index)
+            lambda index: (
+                self.canvas.initializeAiModel(
+                    model_name=self._selectAiModelComboBox.itemData(index)
+                )
+                if self.canvas.createMode in ["ai_polygon", "ai_mask"]
+                else None
             )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask"]
-            else None
         )
 
         self._ai_prompt_widget: QtWidgets.QWidget = AiPromptWidget(
@@ -1439,9 +1446,11 @@ class MainWindow(QtWidgets.QMainWindow):
                     description=s.description,
                     shape_type=s.shape_type,
                     flags=s.flags,
-                    mask=None
-                    if s.mask is None
-                    else utils.img_arr_to_b64(s.mask.astype(np.uint8)),
+                    mask=(
+                        None
+                        if s.mask is None
+                        else utils.img_arr_to_b64(s.mask.astype(np.uint8))
+                    ),
                 )
             )
             return data
@@ -1566,6 +1575,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def setScroll(self, orientation, value):
         self.scrollBars[orientation].setValue(int(value))  # type: ignore[union-attr]
         self.scroll_values[orientation][self.filename] = value
+
+    def moveRequest(self, pos):
+        self.setScroll(
+            Qt.Horizontal,  # type: ignore[attr-defined]
+            self.scrollBars[Qt.Horizontal].value() + pos.x(),  # type: ignore[attr-defined,union-attr]
+        )
+        self.setScroll(
+            Qt.Vertical,  # type: ignore[attr-defined]
+            self.scrollBars[Qt.Vertical].value() + pos.y(),  # type: ignore[attr-defined,union-attr]
+        )
 
     def setZoom(self, value):
         self.actions.fitWidth.setChecked(False)  # type: ignore[attr-defined]

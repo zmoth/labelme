@@ -29,6 +29,7 @@ MOVE_SPEED = 5.0
 class Canvas(QtWidgets.QWidget):
     zoomRequest = QtCore.pyqtSignal(int, QtCore.QPoint)
     scrollRequest = QtCore.pyqtSignal(int, int)
+    moveRequest = QtCore.pyqtSignal(QtCore.QPointF)
     newShape = QtCore.pyqtSignal()
     selectionChanged = QtCore.pyqtSignal(list)
     shapeMoved = QtCore.pyqtSignal()
@@ -109,6 +110,9 @@ class Canvas(QtWidgets.QWidget):
         self._sam_embedding: collections.OrderedDict[
             bytes, osam.types.ImageEmbedding
         ] = collections.OrderedDict()
+
+        self._drag_start_position = QtCore.QPoint()  # 记录开始拖动的位置
+        self._dragging = False
 
     def fillDrawing(self):
         return self._fill_drawing
@@ -254,6 +258,14 @@ class Canvas(QtWidgets.QWidget):
         self.restoreCursor()
 
         is_shift_pressed = ev.modifiers() & QtCore.Qt.ShiftModifier  # type: ignore[attr-defined]
+
+        if (QtCore.Qt.MiddleButton & ev.buttons()) and self._dragging:
+            self.overrideCursor(CURSOR_MOVE)
+            delta = self._drag_start_position - ev.globalPos()  # 计算位移
+            self.moveRequest.emit(delta)
+            self._drag_start_position = ev.globalPos()  # 更新当前位置
+            self.repaint()
+            return
 
         # Polygon drawing.
         if self.drawing():
@@ -454,9 +466,11 @@ class Canvas(QtWidgets.QWidget):
                 elif not self.outOfPixmap(pos):
                     # Create new shape.
                     self.current = Shape(
-                        shape_type="points"
-                        if self.createMode in ["ai_polygon", "ai_mask"]
-                        else self.createMode
+                        shape_type=(
+                            "points"
+                            if self.createMode in ["ai_polygon", "ai_mask"]
+                            else self.createMode
+                        )
                     )
                     self.current.addPoint(pos, label=0 if is_shift_pressed else 1)
                     if self.createMode == "point":
@@ -500,6 +514,10 @@ class Canvas(QtWidgets.QWidget):
                 self.selectShapePoint(pos, multiple_selection_mode=group_mode)
                 self.repaint()
             self.prevPoint = pos
+        elif ev.button() == QtCore.Qt.MiddleButton:  # type: ignore[attr-defined]
+            self.overrideCursor(CURSOR_MOVE)
+            self._drag_start_position = ev.globalPos()  # 记录开始拖动的位置
+            self._dragging = True
 
     def mouseReleaseEvent(self, ev):
         if ev.button() == QtCore.Qt.RightButton:  # type: ignore[attr-defined]
@@ -519,6 +537,9 @@ class Canvas(QtWidgets.QWidget):
                     self.selectionChanged.emit(
                         [x for x in self.selectedShapes if x != self.hShape]
                     )
+        elif ev.button() == QtCore.Qt.MiddleButton:  # type: ignore[attr-defined]
+            self._dragging = False
+            self.restoreCursor()
 
         if self.movingShape and self.hShape:
             index = self.shapes.index(self.hShape)
