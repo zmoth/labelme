@@ -14,7 +14,7 @@ def newIcon(icon):
     return QtGui.QIcon(osp.join(":/", icons_dir, "%s.png" % icon))
 
 
-def newButton(text, icon=None, slot=None):
+def newButton(text, icon=None, slot=None) -> QtWidgets.QPushButton:
     b = QtWidgets.QPushButton(text)
     if icon is not None:
         b.setIcon(newIcon(icon))
@@ -33,7 +33,7 @@ def newAction(
     checkable=False,
     enabled=True,
     checked=False,
-):
+) -> QtWidgets.QAction:
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QtWidgets.QAction(text, parent)
     if icon is not None:

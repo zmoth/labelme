@@ -177,8 +177,8 @@ class MainWindow(QtWidgets.QMainWindow):
         scrollArea.setWidget(self.canvas)
         scrollArea.setWidgetResizable(True)
         self.scrollBars = {
-            Qt.Vertical: scrollArea.verticalScrollBar(),  # type: ignore[attr-defined]
-            Qt.Horizontal: scrollArea.horizontalScrollBar(),  # type: ignore[attr-defined]
+            Qt.Orientation.Vertical: scrollArea.verticalScrollBar(),  # type: ignore[attr-defined]
+            Qt.Orientation.Horizontal: scrollArea.horizontalScrollBar(),  # type: ignore[attr-defined]
         }
         self.canvas.scrollRequest.connect(self.scrollRequest)
         self.canvas.moveRequest.connect(self.moveRequest)
@@ -193,19 +193,27 @@ class MainWindow(QtWidgets.QMainWindow):
         features = QtWidgets.QDockWidget.DockWidgetFeatures()
         for dock in ["flag_dock", "label_dock", "shape_dock", "file_dock"]:
             if self._config[dock]["closable"]:
-                features = features | QtWidgets.QDockWidget.DockWidgetClosable
+                features = (
+                    features
+                    | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetClosable
+                )
             if self._config[dock]["floatable"]:
-                features = features | QtWidgets.QDockWidget.DockWidgetFloatable
+                features = (
+                    features
+                    | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetFloatable
+                )
             if self._config[dock]["movable"]:
-                features = features | QtWidgets.QDockWidget.DockWidgetMovable
+                features = (
+                    features | QtWidgets.QDockWidget.DockWidgetFeature.DockWidgetMovable
+                )
             getattr(self, dock).setFeatures(features)
             if self._config[dock]["show"] is False:
                 getattr(self, dock).setVisible(False)
 
-        self.addDockWidget(Qt.RightDockWidgetArea, self.flag_dock)  # type: ignore[attr-defined]
-        self.addDockWidget(Qt.RightDockWidgetArea, self.label_dock)  # type: ignore[attr-defined]
-        self.addDockWidget(Qt.RightDockWidgetArea, self.shape_dock)  # type: ignore[attr-defined]
-        self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)  # type: ignore[attr-defined]
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.flag_dock)  # type: ignore[attr-defined]
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.label_dock)  # type: ignore[attr-defined]
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.shape_dock)  # type: ignore[attr-defined]
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)  # type: ignore[attr-defined]
 
         # Actions
         action = functools.partial(utils.newAction, self)
@@ -505,7 +513,7 @@ class MainWindow(QtWidgets.QMainWindow):
         zoom = QtWidgets.QWidgetAction(self)
         zoomBoxLayout = QtWidgets.QVBoxLayout()
         zoomLabel = QtWidgets.QLabel(self.tr("Zoom"))
-        zoomLabel.setAlignment(Qt.AlignCenter)  # type: ignore[attr-defined]
+        zoomLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)  # type: ignore[attr-defined]
         zoomBoxLayout.addWidget(zoomLabel)
         zoomBoxLayout.addWidget(self.zoomWidget)
         zoom.setDefaultWidget(QtWidgets.QWidget())
@@ -593,7 +601,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWidth,
         )
         self.zoomMode = self.FIT_WINDOW
-        fitWindow.setChecked(Qt.Checked)  # type: ignore[attr-defined]
+        fitWindow.setChecked(Qt.CheckState.Checked)  # type: ignore[attr-defined]
         self.scalers = {
             self.FIT_WINDOW: self.scaleFitWindow,
             self.FIT_WIDTH: self.scaleFitWidth,
@@ -625,7 +633,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Label list context menu.
         labelMenu = QtWidgets.QMenu()
         utils.addActions(labelMenu, (edit, delete))
-        self.labelList.setContextMenuPolicy(Qt.CustomContextMenu)  # type: ignore[attr-defined]
+        self.labelList.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)  # type: ignore[attr-defined]
         self.labelList.customContextMenuRequested.connect(self.popLabelListMenu)
 
         # Store actions for further handling.
@@ -794,7 +802,7 @@ class MainWindow(QtWidgets.QMainWindow):
         selectAiModel.defaultWidget().setLayout(QtWidgets.QVBoxLayout())  # type: ignore[union-attr]
         #
         selectAiModelLabel = QtWidgets.QLabel(self.tr("AI Mask Model"))
-        selectAiModelLabel.setAlignment(QtCore.Qt.AlignCenter)  # type: ignore[attr-defined]
+        selectAiModelLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)  # type: ignore[attr-defined]
         selectAiModel.defaultWidget().layout().addWidget(selectAiModelLabel)  # type: ignore[union-attr]
         #
         self._selectAiModelComboBox = QtWidgets.QComboBox()
@@ -884,8 +892,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.zoom_values = {}  # key=filename, value=(zoom_mode, zoom_value)
         self.brightnessContrast_values = {}
         self.scroll_values = {  # type: ignore[var-annotated]
-            Qt.Horizontal: {},  # type: ignore[attr-defined]
-            Qt.Vertical: {},  # type: ignore[attr-defined]
+            Qt.Orientation.Horizontal: {},  # type: ignore[attr-defined]
+            Qt.Orientation.Vertical: {},  # type: ignore[attr-defined]
         }  # key=filename, value=scroll_value
 
         if filename is not None and osp.isdir(filename):
@@ -936,10 +944,10 @@ class MainWindow(QtWidgets.QMainWindow):
         toolbar = ToolBar(title)
         toolbar.setObjectName("%sToolBar" % title)
         # toolbar.setOrientation(Qt.Vertical)
-        toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)  # type: ignore[attr-defined]
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)  # type: ignore[attr-defined]
         if actions:
             utils.addActions(toolbar, actions)
-        self.addToolBar(Qt.TopToolBarArea, toolbar)  # type: ignore[attr-defined]
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)  # type: ignore[attr-defined]
         return toolbar
 
     # Support Functions
@@ -1165,7 +1173,7 @@ class MainWindow(QtWidgets.QMainWindow):
             action.triggered.connect(functools.partial(self.loadRecent, f))
             menu.addAction(action)
 
-    def popLabelListMenu(self, point):
+    def popLabelListMenu(self, point: QtCore.QPoint):
         self.menus.labelList.exec_(self.labelList.mapToGlobal(point))  # type: ignore[attr-defined]
 
     def validateLabel(self, label):
@@ -1174,7 +1182,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return True
 
         for i in range(self.uniqLabelList.count()):
-            label_i = self.uniqLabelList.item(i).data(Qt.UserRole)  # type: ignore[attr-defined,union-attr]
+            label_i = self.uniqLabelList.item(i).data(Qt.ItemDataRole.UserRole)  # type: ignore[attr-defined,union-attr]
             if self._config["validate_label"] in ["exact"]:
                 if label_i == label:
                     return True
@@ -1317,7 +1325,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         )
 
-    def _update_shape_color(self, shape):
+    def _update_shape_color(self, shape: Shape):
         r, g, b = self._get_rgb_by_label(shape.label)
         shape.line_color = QtGui.QColor(r, g, b)
         shape.vertex_fill_color = QtGui.QColor(r, g, b)
@@ -1360,7 +1368,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._noSelectionSlot = False
         self.canvas.loadShapes(shapes, replace=replace)
 
-    def loadLabels(self, shapes):
+    def loadLabels(self, shapes: list[Shape]):
         s = []
         for shape in shapes:
             label = shape["label"]
@@ -1403,14 +1411,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.flag_widget.clear()  # type: ignore[union-attr]
         for key, flag in flags.items():
             item = QtWidgets.QListWidgetItem(key)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)  # type: ignore[attr-defined]
-            item.setCheckState(Qt.Checked if flag else Qt.Unchecked)  # type: ignore[attr-defined]
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)  # type: ignore[attr-defined]
+            item.setCheckState(Qt.CheckState.Checked if flag else Qt.CheckState.Unchecked)  # type: ignore[attr-defined]
             self.flag_widget.addItem(item)  # type: ignore[union-attr]
 
     def saveLabels(self, filename):
         lf = LabelFile()
 
-        def format_shape(s):
+        def format_shape(s: Shape):
             data = s.other_data.copy()
             data.update(
                 dict(
@@ -1434,7 +1442,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(self.flag_widget.count()):  # type: ignore[union-attr]
             item = self.flag_widget.item(i)  # type: ignore[union-attr]
             key = item.text()  # type: ignore[union-attr]
-            flag = item.checkState() == Qt.Checked  # type: ignore[attr-defined,union-attr]
+            flag = item.checkState() == Qt.CheckState.Checked  # type: ignore[attr-defined,union-attr]
             flags[key] = flag
         try:
             imagePath = osp.relpath(self.imagePath, osp.dirname(filename))  # type: ignore[arg-type]
@@ -1452,11 +1460,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 flags=flags,
             )
             self.labelFile = lf
-            items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)  # type: ignore[attr-defined]
+            items = self.fileListWidget.findItems(self.imagePath, Qt.MatchFlag.MatchExactly)  # type: ignore[attr-defined]
             if len(items) > 0:
                 if len(items) != 1:
                     raise RuntimeError("There are duplicate files.")
-                items[0].setCheckState(Qt.Checked)  # type: ignore[attr-defined]
+                items[0].setCheckState(Qt.CheckState.Checked)  # type: ignore[attr-defined]
             # disable allows next and previous image to proceed
             # self.filename = filename
             return True
@@ -1492,7 +1500,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def labelItemChanged(self, item):
         shape = item.shape()
-        self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)  # type: ignore[attr-defined]
+        self.canvas.setShapeVisible(shape, item.checkState() == Qt.CheckState.Checked)  # type: ignore[attr-defined]
 
     def labelOrderChanged(self):
         self.setDirty()
@@ -1508,7 +1516,7 @@ class MainWindow(QtWidgets.QMainWindow):
         items = self.uniqLabelList.selectedItems()
         text = None
         if items:
-            text = items[0].data(Qt.UserRole)  # type: ignore[attr-defined]
+            text = items[0].data(Qt.ItemDataRole.UserRole)  # type: ignore[attr-defined]
         flags = {}
         group_id = None
         description = ""
@@ -1552,12 +1560,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def moveRequest(self, pos):
         self.setScroll(
-            Qt.Horizontal,  # type: ignore[attr-defined]
-            self.scrollBars[Qt.Horizontal].value() + pos.x(),  # type: ignore[attr-defined,union-attr]
+            Qt.Orientation.Horizontal,  # type: ignore[attr-defined]
+            self.scrollBars[Qt.Orientation.Horizontal].value() + pos.x(),  # type: ignore[attr-defined,union-attr]
         )
         self.setScroll(
-            Qt.Vertical,  # type: ignore[attr-defined]
-            self.scrollBars[Qt.Vertical].value() + pos.y(),  # type: ignore[attr-defined,union-attr]
+            Qt.Orientation.Vertical,  # type: ignore[attr-defined]
+            self.scrollBars[Qt.Orientation.Vertical].value() + pos.y(),  # type: ignore[attr-defined,union-attr]
         )
 
     def setZoom(self, value):
@@ -1590,12 +1598,12 @@ class MainWindow(QtWidgets.QMainWindow):
             y_shift = round(pos.y() * canvas_scale_factor) - pos.y()
 
             self.setScroll(
-                Qt.Horizontal,  # type: ignore[attr-defined]
-                self.scrollBars[Qt.Horizontal].value() + x_shift,  # type: ignore[attr-defined,union-attr]
+                Qt.Orientation.Horizontal,  # type: ignore[attr-defined]
+                self.scrollBars[Qt.Orientation.Horizontal].value() + x_shift,  # type: ignore[attr-defined,union-attr]
             )
             self.setScroll(
-                Qt.Vertical,  # type: ignore[attr-defined]
-                self.scrollBars[Qt.Vertical].value() + y_shift,  # type: ignore[attr-defined,union-attr]
+                Qt.Orientation.Vertical,  # type: ignore[attr-defined]
+                self.scrollBars[Qt.Orientation.Vertical].value() + y_shift,  # type: ignore[attr-defined,union-attr]
             )
 
     def setFitWindow(self, value=True):
@@ -1640,8 +1648,8 @@ class MainWindow(QtWidgets.QMainWindow):
         flag = value
         for item in self.labelList:
             if value is None:
-                flag = item.checkState() == Qt.Unchecked  # type: ignore[attr-defined]
-            item.setCheckState(Qt.Checked if flag else Qt.Unchecked)  # type: ignore[attr-defined]
+                flag = item.checkState() == Qt.CheckState.Unchecked  # type: ignore[attr-defined]
+            item.setCheckState(Qt.CheckState.Checked if flag else Qt.CheckState.Unchecked)  # type: ignore[attr-defined]
 
     def loadFile(self, filename=None):
         """Load the specified file, or the last opened file if None."""
@@ -1814,7 +1822,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._config["store_data"] = enabled
         self.actions.saveWithImageData.setChecked(enabled)  # type: ignore[attr-defined]
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QtGui.QCloseEvent):
         if not self.mayContinue():
             event.ignore()
         self.settings.setValue("filename", self.filename if self.filename else "")
@@ -1825,7 +1833,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # ask the use for where to save the labels
         # self.settings.setValue('window/geometry', self.saveGeometry())
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         extensions = [
             ".%s" % fmt.data().decode().lower()
             for fmt in QtGui.QImageReader.supportedImageFormats()
@@ -1837,7 +1845,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             event.ignore()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QtGui.QDropEvent):
         if not self.mayContinue():
             event.ignore()
             return
@@ -1853,7 +1861,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def openPrevImg(self, _value=False):
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
-            Qt.ControlModifier | Qt.ShiftModifier  # type: ignore[attr-defined]
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier  # type: ignore[attr-defined]
         ):
             self._config["keep_prev"] = True
 
@@ -1877,7 +1885,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def openNextImg(self, _value=False, load=True):
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
-            Qt.ControlModifier | Qt.ShiftModifier  # type: ignore[attr-defined]
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier  # type: ignore[attr-defined]
         ):
             self._config["keep_prev"] = True
 
@@ -1915,13 +1923,13 @@ class MainWindow(QtWidgets.QMainWindow):
             formats + ["*%s" % LabelFile.suffix]
         )
         fileDialog = FileDialogPreview(self)
-        fileDialog.setFileMode(FileDialogPreview.ExistingFile)
+        fileDialog.setFileMode(FileDialogPreview.FileMode.ExistingFile)
         fileDialog.setNameFilter(filters)
         fileDialog.setWindowTitle(
             self.tr("%s - Choose Image or Label file") % __appname__,
         )
         fileDialog.setWindowFilePath(path)
-        fileDialog.setViewMode(FileDialogPreview.Detail)
+        fileDialog.setViewMode(FileDialogPreview.ViewMode.Detail)
         if fileDialog.exec_():
             fileName = fileDialog.selectedFiles()[0]
             if fileName:
@@ -1938,8 +1946,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self,
             self.tr("%s - Save/Load Annotations in Directory") % __appname__,
             default_output_dir,
-            QtWidgets.QFileDialog.ShowDirsOnly
-            | QtWidgets.QFileDialog.DontResolveSymlinks,
+            QtWidgets.QFileDialog.Option.ShowDirsOnly
+            | QtWidgets.QFileDialog.Option.DontResolveSymlinks,
         )
         output_dir = str(output_dir)
 
@@ -1985,9 +1993,9 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             dlg = QtWidgets.QFileDialog(self, caption, self.currentPath(), filters)
         dlg.setDefaultSuffix(LabelFile.suffix[1:])
-        dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptSave)
-        dlg.setOption(QtWidgets.QFileDialog.DontConfirmOverwrite, False)
-        dlg.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, False)
+        dlg.setAcceptMode(QtWidgets.QFileDialog.AcceptMode.AcceptSave)
+        dlg.setOption(QtWidgets.QFileDialog.Option.DontConfirmOverwrite, False)
+        dlg.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog, False)
         basename = osp.basename(osp.splitext(self.filename)[0])
         if self.output_dir:
             default_labelfile_name = osp.join(
@@ -2074,12 +2082,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self,
             self.tr("Save annotations?"),
             msg,
-            mb.Save | mb.Discard | mb.Cancel,
-            mb.Save,
+            mb.StandardButton.Save
+            | mb.StandardButton.Discard
+            | mb.StandardButton.Cancel,
+            mb.StandardButton.Save,
         )
-        if answer == mb.Discard:
+        if answer == mb.StandardButton.Discard:
             return True
-        elif answer == mb.Save:
+        elif answer == mb.StandardButton.Save:
             self.saveFile()
             return True
         else:  # answer == mb.Cancel
@@ -2099,9 +2109,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def removeSelectedPoint(self):
         self.canvas.removeSelectedPoint()
         self.canvas.update()
-        if not self.canvas.hShape.points:  # type: ignore[union-attr]
-            self.canvas.deleteShape(self.canvas.hShape)
-            self.remLabels([self.canvas.hShape])
+        if not self.canvas.highlightShape.points:  # type: ignore[union-attr]
+            self.canvas.deleteShape(self.canvas.highlightShape)
+            self.remLabels([self.canvas.highlightShape])
             if self.noShapes():
                 for action in self.actions.onShapesPresent:  # type: ignore[attr-defined]
                     action.setEnabled(False)
@@ -2147,8 +2157,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self,
                 self.tr("%s - Open Directory") % __appname__,
                 defaultOpenDirPath,
-                QtWidgets.QFileDialog.ShowDirsOnly
-                | QtWidgets.QFileDialog.DontResolveSymlinks,
+                QtWidgets.QFileDialog.Option.ShowDirsOnly
+                | QtWidgets.QFileDialog.Option.DontResolveSymlinks,
             )
         )
         self.importDirImages(targetDirPath)
@@ -2176,11 +2186,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 label_file_without_path = osp.basename(label_file)
                 label_file = osp.join(self.output_dir, label_file_without_path)
             item = QtWidgets.QListWidgetItem(file)
-            item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)  # type: ignore[attr-defined]
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)  # type: ignore[attr-defined]
             if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
-                item.setCheckState(Qt.Checked)  # type: ignore[attr-defined]
+                item.setCheckState(Qt.CheckState.Checked)  # type: ignore[attr-defined]
             else:
-                item.setCheckState(Qt.Unchecked)  # type: ignore[attr-defined]
+                item.setCheckState(Qt.CheckState.Unchecked)  # type: ignore[attr-defined]
             self.fileListWidget.addItem(item)
 
         if len(self.imageList) > 1:
@@ -2212,11 +2222,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 label_file_without_path = osp.basename(label_file)
                 label_file = osp.join(self.output_dir, label_file_without_path)
             item = QtWidgets.QListWidgetItem(filename)
-            item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)  # type: ignore[attr-defined]
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)  # type: ignore[attr-defined]
             if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
-                item.setCheckState(Qt.Checked)  # type: ignore[attr-defined]
+                item.setCheckState(Qt.CheckState.Checked)  # type: ignore[attr-defined]
             else:
-                item.setCheckState(Qt.Unchecked)  # type: ignore[attr-defined]
+                item.setCheckState(Qt.CheckState.Unchecked)  # type: ignore[attr-defined]
             self.fileListWidget.addItem(item)
         self.openNextImg(load=load)
 

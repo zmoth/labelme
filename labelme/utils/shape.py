@@ -44,9 +44,7 @@ def shape_to_mask(
         draw.line(xy=xy, fill=1, width=line_width)  # type: ignore[arg-type]
     elif shape_type == "point":
         assert len(xy) == 1, "Shape of shape_type=point must have 1 points"
-        cx, cy = xy[0]
-        r = point_size
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=1, fill=1)
+        draw.point(xy=xy, fill=1)
     elif shape_type in [None, "polygon"]:
         assert len(xy) > 2, "Polygon must have points more than 2"
         draw.polygon(xy=xy, outline=1, fill=1)  # type: ignore[arg-type]

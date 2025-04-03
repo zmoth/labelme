@@ -277,7 +277,7 @@ class Shape(object):
             painter.drawPath(negative_vrtx_path)
             painter.fillPath(negative_vrtx_path, QtGui.QColor(255, 0, 0, 255))
 
-    def drawVertex(self, path, i):
+    def drawVertex(self, path: QtGui.QPainterPath, i):
         d = self.point_size
         shape = self.point_type
         point = self._scale_point(self.points[i])
@@ -296,6 +296,11 @@ class Shape(object):
             assert False, "unsupported vertex shape"
 
     def nearestVertex(self, point, epsilon):
+        if self.shape_type == "point":
+            return None
+        return self._nearestVertex(point, epsilon)
+
+    def _nearestVertex(self, point, epsilon):
         min_distance = float("inf")
         min_i = None
         point = QtCore.QPointF(point.x() * self.scale, point.y() * self.scale)
@@ -336,9 +341,11 @@ class Shape(object):
                 self.mask.shape[1] - 1,
             )
             return self.mask[y, x]
+        if self.shape_type == "point":
+            return self._nearestVertex(point, 10) is not None
         return self.makePath().contains(point)
 
-    def makePath(self):
+    def makePath(self) -> QtGui.QPainterPath:
         if self.shape_type in ["rectangle", "mask"]:
             path = QtGui.QPainterPath()
             if len(self.points) == 2:
@@ -348,6 +355,10 @@ class Shape(object):
             if len(self.points) == 2:
                 raidus = labelme.utils.distance(self.points[0] - self.points[1])
                 path.addEllipse(self.points[0], raidus, raidus)
+        elif self.shape_type == "point":
+            path = QtGui.QPainterPath()
+            raidus = 1
+            path.addEllipse(self.points[0], raidus, raidus)
         else:
             path = QtGui.QPainterPath(self.points[0])
             for p in self.points[1:]:
