@@ -115,6 +115,10 @@ class Canvas(QtWidgets.QWidget):
         self._drag_start_position = QtCore.QPoint()  # 记录开始拖动的位置
         self._dragging = False
 
+        self.select_begin = QtCore.QPoint()
+        self.select_end = QtCore.QPoint()
+        self._selecting = False
+
     def fillDrawing(self):
         return self._fill_drawing
 
@@ -338,15 +342,20 @@ class Canvas(QtWidgets.QWidget):
 
         # Polygon/Vertex moving.
         if Qt.MouseButton.LeftButton & ev.buttons():
-            if self.selectedVertex():
-                self.boundedMoveVertex(pos)
+            if self._selecting:
+                self.select_end = pos
+                self.selectShapeRect(QtCore.QRectF(self.select_begin, self.select_end))
                 self.repaint()
-                self.movingShape = True
-            elif self.selectedShapes and self.prevPoint:
-                self.overrideCursor(CURSOR_MOVE)
-                self.boundedMoveShapes(self.selectedShapes, pos)
-                self.repaint()
-                self.movingShape = True
+            else:
+                if self.selectedVertex():
+                    self.boundedMoveVertex(pos)
+                    self.repaint()
+                    self.movingShape = True
+                elif self.selectedShapes and self.prevPoint:
+                    self.overrideCursor(CURSOR_MOVE)
+                    self.boundedMoveShapes(self.selectedShapes, pos)
+                    self.repaint()
+                    self.movingShape = True
             return
 
         # Just hovering over the canvas, 2 possibilities:
@@ -509,7 +518,14 @@ class Canvas(QtWidgets.QWidget):
                 group_mode = int(ev.modifiers()) == Qt.KeyboardModifier.ControlModifier
                 self.selectShapePoint(pos, multiple_selection_mode=group_mode)
                 self.prevPoint = pos
+
+                if len(self.selectedShapes) == 0:
+                    self.select_begin = pos
+                    self.select_end = self.select_begin
+                    self._selecting = True
+
                 self.repaint()
+
         elif ev.button() == Qt.MouseButton.RightButton and self.editing():
             group_mode = int(ev.modifiers()) == Qt.KeyboardModifier.ControlModifier
             if not self.selectedShapes or (
@@ -533,6 +549,10 @@ class Canvas(QtWidgets.QWidget):
                 self.selectedShapesCopy = []
                 self.repaint()
         elif ev.button() == Qt.MouseButton.LeftButton:
+            self.select_begin = self.select_end = QtCore.QPoint()
+            self._selecting = False
+            self.update()
+
             if self.editing():
                 if (
                     self.highlightShape is not None
@@ -622,6 +642,19 @@ class Canvas(QtWidgets.QWidget):
                 return
         self.deSelectShape()
 
+    def selectShapeRect(self, rect: QtCore.QRectF):
+        selectedShapes = self.selectedShapes
+        for shape in reversed(self.shapes):
+            if self.isVisible(shape) and rect.contains(shape.boundingRect()):
+                self.setHiding()
+                if shape not in self.selectedShapes:
+                    selectedShapes.append(shape)
+                    self.highlightShapeIsSelected = False
+                else:
+                    self.highlightShapeIsSelected = True
+        self.selectionChanged.emit(selectedShapes)
+        self.calculateOffsets(rect.center())
+
     def calculateOffsets(self, point):
         left = self.pixmap.width() - 1
         right = 0
@@ -708,9 +741,9 @@ class Canvas(QtWidgets.QWidget):
 
         p = self._painter
         p.begin(self)
-        p.setRenderHint(QtGui.QPainter.Antialiasing)
-        p.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
-        p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QtGui.QPainter.RenderHint.HighQualityAntialiasing)
+        p.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
 
         p.scale(self.scale, self.scale)
         p.translate(self.offsetToCenter())
@@ -718,6 +751,19 @@ class Canvas(QtWidgets.QWidget):
         p.drawPixmap(0, 0, self.pixmap)
 
         p.scale(1 / self.scale, 1 / self.scale)
+
+        # 多选框
+        if self.editing() and self.select_begin != self.select_end:
+            b = p.brush()
+            p.setPen(QtGui.QColor(0, 95, 184))
+            p.setBrush(QtGui.QBrush(QtGui.QColor(0, 95, 184, 100)))
+            p.drawRect(
+                int(self.select_begin.x() * self.scale),
+                int(self.select_begin.y() * self.scale),
+                int((self.select_end.x() - self.select_begin.x()) * self.scale),
+                int((self.select_end.y() - self.select_begin.y()) * self.scale),
+            )
+            p.setBrush(b)
 
         # draw crosshair
         if (

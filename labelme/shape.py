@@ -172,7 +172,7 @@ class Shape(object):
     def setOpen(self):
         self._closed = False
 
-    def paint(self, painter):
+    def paint(self, painter: QtGui.QPainter):
         if self.mask is None and not self.points:
             return
 
@@ -328,7 +328,7 @@ class Shape(object):
                 post_i = i
         return post_i
 
-    def containsPoint(self, point):
+    def containsPoint(self, point: QtCore.QPoint) -> bool:
         if self.mask is not None:
             y = np.clip(
                 int(round(point.y() - self.points[0].y())),
@@ -365,7 +365,7 @@ class Shape(object):
                 path.lineTo(p)
         return path
 
-    def boundingRect(self):
+    def boundingRect(self) -> QtCore.QRectF:
         return self.makePath().boundingRect()
 
     def moveBy(self, offset):
