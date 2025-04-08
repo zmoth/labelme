@@ -5,6 +5,7 @@ import skimage.measure
 from loguru import logger
 from PyQt5 import QtCore
 from PyQt5 import QtGui
+from PyQt5.QtCore import Qt
 
 import labelme.utils
 
@@ -48,9 +49,9 @@ class Shape(object):
         description=None,
         mask=None,
     ):
-        self.label = label
-        self.group_id = group_id
-        self.points = []
+        self.label: str | None = label
+        self.group_id: int | None = group_id
+        self.points: list[QtCore.QPointF] = []
         self.point_labels = []
         self.shape_type = shape_type
         self._shape_raw = None
@@ -81,12 +82,22 @@ class Shape(object):
     def _scale_point(self, point: QtCore.QPointF) -> QtCore.QPointF:
         return QtCore.QPointF(point.x() * self.scale, point.y() * self.scale)
 
-    def setShapeRefined(self, shape_type, points, point_labels, mask=None):
+    def setShapeRefined(
+        self,
+        shape_type,
+        points,
+        point_labels,
+        mask=None,
+        group_id=None,
+        description=None,
+    ):
         self._shape_raw = (self.shape_type, self.points, self.point_labels)
         self.shape_type = shape_type
         self.points = points
         self.point_labels = point_labels
         self.mask = mask
+        self.group_id = group_id
+        self.description = description
 
     def restoreShapeRaw(self):
         if self._shape_raw is None:
@@ -193,8 +204,8 @@ class Shape(object):
             qimage = QtGui.QImage.fromData(labelme.utils.img_arr_to_data(image_to_draw))
             qimage = qimage.scaled(
                 qimage.size() * self.scale,
-                QtCore.Qt.IgnoreAspectRatio,  # type: ignore[attr-defined]
-                QtCore.Qt.SmoothTransformation,  # type: ignore[attr-defined]
+                Qt.AspectRatioMode.IgnoreAspectRatio,  # type: ignore[attr-defined]
+                Qt.TransformationMode.SmoothTransformation,  # type: ignore[attr-defined]
             )
 
             painter.drawImage(self._scale_point(point=self.points[0]), qimage)

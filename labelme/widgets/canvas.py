@@ -10,7 +10,9 @@ from PyQt5.QtCore import Qt
 
 import osam
 import numpy as np
+from datetime import datetime
 from labelme._automation import polygon_from_mask
+from labelme._automation import decoder
 import labelme.utils
 from labelme.shape import Shape
 
@@ -31,7 +33,7 @@ class Canvas(QtWidgets.QWidget):
     zoomRequest = QtCore.pyqtSignal(int, QtCore.QPoint)
     scrollRequest = QtCore.pyqtSignal(int, int)
     moveRequest = QtCore.pyqtSignal(QtCore.QPointF)
-    newShape = QtCore.pyqtSignal()
+    newShape = QtCore.pyqtSignal(Shape)
     selectionChanged = QtCore.pyqtSignal(list)
     shapeMoved = QtCore.pyqtSignal()
     drawingPolygon = QtCore.pyqtSignal(bool)
@@ -64,6 +66,7 @@ class Canvas(QtWidgets.QWidget):
                 "linestrip": False,
                 "ai_polygon": False,
                 "ai_mask": False,
+                "barcode": False,
             },
         )
         super(Canvas, self).__init__(*args, **kwargs)
@@ -112,9 +115,11 @@ class Canvas(QtWidgets.QWidget):
             bytes, osam.types.ImageEmbedding
         ] = collections.OrderedDict()
 
+        # 画布拖拽
         self._drag_start_position = QtCore.QPoint()  # 记录开始拖动的位置
         self._dragging = False
 
+        # 多选框
         self.select_begin = QtCore.QPoint()
         self.select_end = QtCore.QPoint()
         self._selecting = False
@@ -140,6 +145,7 @@ class Canvas(QtWidgets.QWidget):
             "linestrip",
             "ai_polygon",
             "ai_mask",
+            "barcode",
         ]:
             raise ValueError("Unsupported createMode: %s" % value)
         self._createMode = value
@@ -159,6 +165,15 @@ class Canvas(QtWidgets.QWidget):
         self._sam_embedding[image.tobytes()] = sam.encode_image(
             image=imgviz.asrgb(image)
         )
+
+    def _determine_shape_type(self):
+        """Return the shape type for the current create mode."""
+        if self.createMode in ["ai_polygon", "ai_mask"]:
+            return "points"
+        elif self.createMode in ["barcode"]:
+            return "rectangle"  # 将二维码放入矩形框中
+        else:
+            return self.createMode
 
     def initializeAiModel(self, model_name):
         if self.pixmap is None:
@@ -274,10 +289,7 @@ class Canvas(QtWidgets.QWidget):
 
         # Polygon drawing.
         if self.drawing():
-            if self.createMode in ["ai_polygon", "ai_mask"]:
-                self.line.shape_type = "points"
-            else:
-                self.line.shape_type = self.createMode
+            self.line.shape_type = self._determine_shape_type()
 
             self.overrideCursor(CURSOR_DRAW)
             if not self.current:
@@ -291,7 +303,7 @@ class Canvas(QtWidgets.QWidget):
             elif (
                 self.snapping
                 and len(self.current) > 1
-                and self.createMode == "polygon"
+                and self.createMode in ["polygon"]
                 and self.closeEnough(pos, self.current[0])
             ):
                 # Attract line to starting point and
@@ -299,6 +311,7 @@ class Canvas(QtWidgets.QWidget):
                 pos = self.current[0]
                 self.overrideCursor(CURSOR_POINT)
                 self.current.highlightVertex(0, Shape.NEAR_VERTEX)
+
             if self.createMode in ["polygon", "linestrip"]:
                 self.line.points = [self.current[-1], pos]
                 self.line.point_labels = [1, 1]
@@ -308,7 +321,7 @@ class Canvas(QtWidgets.QWidget):
                     self.current.point_labels[-1],
                     0 if is_shift_pressed else 1,
                 ]
-            elif self.createMode == "rectangle":
+            elif self.createMode in ["rectangle", "barcode"]:
                 self.line.points = [self.current[0], pos]
                 self.line.point_labels = [1, 1]
                 self.line.close()
@@ -450,14 +463,33 @@ class Canvas(QtWidgets.QWidget):
             if self.drawing():
                 if self.current:
                     # Add point to existing shape.
-                    if self.createMode == "polygon":
+                    if self.createMode in ["polygon"]:
                         self.current.addPoint(self.line[1])
                         self.line[0] = self.current[-1]
                         if self.current.isClosed():
                             self.finalise()
-                    elif self.createMode in ["rectangle", "circle", "line"]:
+                    elif self.createMode in ["barcode", "rectangle", "circle", "line"]:
                         assert len(self.current.points) == 1
                         self.current.points = self.line.points
+                        if self.createMode in ["barcode"]:
+                            _update_shape_with_decoder(
+                                shape=self.current,
+                                createMode=self.createMode,
+                                image=self.pixmap.toImage(),
+                            )
+                            self.finalise()
+                            # corner
+                            s = self.shapes[-1]
+                            labels = ["bl", "br", "tr", "tl"]
+                            for index in s.point_labels:
+                                self.current = Shape(
+                                    label=labels[index],
+                                    shape_type="point",
+                                    group_id=s.group_id,
+                                )
+                                self.current.addPoint(s.points[index], 0)
+                                self.finalise()  # 如果是点直接结束
+                            return
                         self.finalise()
                     elif self.createMode == "linestrip":
                         self.current.addPoint(self.line[1])
@@ -475,21 +507,15 @@ class Canvas(QtWidgets.QWidget):
                             self.finalise()
                 elif not self.outOfPixmap(pos):
                     # Create new shape.
-                    self.current = Shape(
-                        shape_type=(
-                            "points"
-                            if self.createMode in ["ai_polygon", "ai_mask"]
-                            else self.createMode
-                        )
-                    )
+                    self.current = Shape(shape_type=self._determine_shape_type())
                     self.current.addPoint(pos, label=0 if is_shift_pressed else 1)
                     if self.createMode == "point":
-                        self.finalise()
+                        self.finalise()  # 如果是点直接结束
                     elif (
                         self.createMode in ["ai_polygon", "ai_mask"]
                         and ev.modifiers() & Qt.KeyboardModifier.ControlModifier
                     ):
-                        self.finalise()
+                        self.finalise()  # Control + LeftClick 结束
                     else:
                         if self.createMode == "circle":
                             self.current.shape_type = "circle"
@@ -519,7 +545,11 @@ class Canvas(QtWidgets.QWidget):
                 self.selectShapePoint(pos, multiple_selection_mode=group_mode)
                 self.prevPoint = pos
 
-                if len(self.selectedShapes) == 0:
+                if (
+                    len(self.selectedShapes) == 0
+                    and self.prevPoint
+                    and not self.selectedVertex()
+                ):
                     self.select_begin = pos
                     self.select_end = self.select_begin
                     self._selecting = True
@@ -612,7 +642,7 @@ class Canvas(QtWidgets.QWidget):
             return
 
         if (
-            self.createMode == "polygon" and self.canCloseShape()
+            self.createMode in ["polygon"] and self.canCloseShape()
         ) or self.createMode in ["ai_polygon", "ai_mask"]:
             self.finalise()
 
@@ -804,7 +834,7 @@ class Canvas(QtWidgets.QWidget):
             return
 
         if (
-            self.createMode == "polygon"
+            self.createMode in ["polygon"]
             and self.fillDrawing()
             and len(self.current.points) >= 2
         ):
@@ -862,6 +892,7 @@ class Canvas(QtWidgets.QWidget):
         return not (0 <= p.x() <= w - 1 and 0 <= p.y() <= h - 1)
 
     def finalise(self):
+        """Finalize the current shape."""
         assert self.current
         if self._sam:
             _update_shape_with_sam(
@@ -876,9 +907,9 @@ class Canvas(QtWidgets.QWidget):
 
         self.shapes.append(self.current)
         self.storeShapes()
+        self.newShape.emit(self.current)
         self.current = None
         self.setHiding(False)
-        self.newShape.emit()
         self.update()
 
     def closeEnough(self, p1, p2):
@@ -1077,6 +1108,36 @@ class Canvas(QtWidgets.QWidget):
         self.pixmap = None  # type: ignore[assignment]
         self.shapesBackups = []
         self.update()
+
+
+def _update_shape_with_decoder(
+    shape: Shape,
+    createMode: str,
+    image: QtGui.QImage,
+) -> None:
+    if createMode not in ["barcode"]:
+        raise ValueError(f"createMode must be 'barcode', not {createMode}")
+
+    points = decoder.decode_barcode(image=image.copy(shape.boundingRect().toRect()))
+
+    if points is None:
+        logger.warning("No points returned by decoder")
+        return
+
+    p = shape.boundingRect().toRect().topLeft()
+    points = [(point + p) for point in points]
+
+    # 获取当前时间
+    now = datetime.now()
+    # 将当前时间转换为时间戳
+    timestamp = now.timestamp()
+
+    shape.setShapeRefined(
+        shape_type="polygon",
+        points=points,
+        point_labels=[0, 1, 2, 3],
+        group_id=int(timestamp),
+    )
 
 
 def _update_shape_with_sam(

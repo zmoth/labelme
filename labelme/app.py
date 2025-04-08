@@ -411,6 +411,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 else None
             )
         )
+        createBarcodeMode = action(
+            self.tr("Create Barcode"),
+            lambda: self.toggleDrawMode(False, createMode="barcode"),
+            shortcuts["create_barcode"],
+            "objects",
+            self.tr("Start drawing barcodes. Ctrl+LeftClick ends creation."),
+            enabled=False,
+        )
         editMode = action(
             self.tr("Edit Polygons"),
             self.setEditMode,
@@ -664,6 +672,7 @@ class MainWindow(QtWidgets.QMainWindow):
             createLineStripMode=createLineStripMode,
             createAiPolygonMode=createAiPolygonMode,
             createAiMaskMode=createAiMaskMode,
+            createBarcodeMode=createBarcodeMode,
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
@@ -702,6 +711,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 createLineStripMode,
                 createAiPolygonMode,
                 createAiMaskMode,
+                createBarcodeMode,
                 editMode,
                 edit,
                 duplicate,
@@ -722,6 +732,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 createLineStripMode,
                 createAiPolygonMode,
                 createAiMaskMode,
+                createBarcodeMode,
                 editMode,
                 brightnessContrast,
             ),
@@ -971,6 +982,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createLineStripMode,  # type: ignore[attr-defined]
             self.actions.createAiPolygonMode,  # type: ignore[attr-defined]
             self.actions.createAiMaskMode,  # type: ignore[attr-defined]
+            self.actions.createBarcodeMode,  # type: ignore[attr-defined]
             self.actions.editMode,  # type: ignore[attr-defined]
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)  # type: ignore[attr-defined]
@@ -998,6 +1010,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.save.setEnabled(False)  # type: ignore[attr-defined]
         self.actions.createMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createRectangleMode.setEnabled(True)  # type: ignore[attr-defined]
+        self.actions.createBarcodeMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createCircleMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createLineMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createPointMode.setEnabled(True)  # type: ignore[attr-defined]
@@ -1141,6 +1154,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "linestrip": self.actions.createLineStripMode,  # type: ignore[attr-defined]
             "ai_polygon": self.actions.createAiPolygonMode,  # type: ignore[attr-defined]
             "ai_mask": self.actions.createAiMaskMode,  # type: ignore[attr-defined]
+            "barcode": self.actions.createBarcodeMode,  # type: ignore[attr-defined]
         }
 
         self.canvas.setEditing(edit)
@@ -1508,7 +1522,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Callback functions:
 
-    def newShape(self):
+    def newShape(self, shape: Shape):
         """Pop-up and give focus to the label editor.
 
         position MUST be in global coordinates.
@@ -1518,11 +1532,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if items:
             text = items[0].data(Qt.ItemDataRole.UserRole)  # type: ignore[attr-defined]
         flags = {}
-        group_id = None
+        if shape.label is not None:
+            text = shape.label
+        group_id = shape.group_id
         description = ""
         if self._config["display_label_popup"] or not text:
             previous_text = self.labelDialog.edit.text()
-            text, flags, group_id, description = self.labelDialog.popUp(text)
+            text, flags, group_id, description = self.labelDialog.popUp(
+                text, group_id=group_id, description=description
+            )
             if not text:
                 self.labelDialog.edit.setText(previous_text)
 
