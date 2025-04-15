@@ -472,26 +472,17 @@ class Canvas(QtWidgets.QWidget):
                         assert len(self.current.points) == 1
                         self.current.points = self.line.points
                         if self.createMode in ["barcode"]:
-                            _update_shape_with_decoder(
+                            shapes = _update_shape_with_decoder(
                                 shape=self.current,
                                 createMode=self.createMode,
                                 image=self.pixmap.toImage(),
                             )
-                            self.finalise()
-                            # corner
-                            if not (self.shapes and len(self.shapes) > 0):
+                            if len(shapes) == 0:
+                                self.finalise()
                                 return
-                            s = self.shapes[-1]
-                            if s.shape_type == "polygon" and len(s.point_labels) == 4:
-                                labels = ["bl", "br", "tr", "tl"]
-                                for index in s.point_labels:
-                                    self.current = Shape(
-                                        label=labels[index],
-                                        shape_type="point",
-                                        group_id=s.group_id,
-                                    )
-                                    self.current.addPoint(s.points[index], 0)
-                                    self.finalise()  # 如果是点直接结束
+                            for shape in shapes:
+                                self.current = shape
+                                self.finalise()
                             return
                         self.finalise()
                     elif self.createMode == "linestrip":
@@ -1117,30 +1108,66 @@ def _update_shape_with_decoder(
     shape: Shape,
     createMode: str,
     image: QtGui.QImage,
-) -> None:
+) -> list[Shape]:
     if createMode not in ["barcode"]:
         raise ValueError(f"createMode must be 'barcode', not {createMode}")
 
-    points = decoder.decode_barcode(image=image.copy(shape.boundingRect().toRect()))
+    shapes: list[Shape] = []
+    results = decoder.decode_barcode(image=image.copy(shape.boundingRect().toRect()))
 
-    if points is None:
+    if results is None and len(results) == 0:
         logger.warning("No points returned by decoder")
-        return
+        return shapes
 
     p = shape.boundingRect().toRect().topLeft()
-    points = [(point + p) for point in points]
+    results = [[point + p for point in sublist] for sublist in results]
 
     # 获取当前时间
     now = datetime.now()
     # 将当前时间转换为时间戳
-    timestamp = now.timestamp()
+    timestamp = now.timestamp() * 1000
+    for points in results:
+        datamatrix = Shape(
+            label="datamatrix",
+            shape_type="polygon",
+            group_id=int(timestamp),
+        )
+        datamatrix.addPoint(points[0])
+        datamatrix.addPoint(points[1])
+        datamatrix.addPoint(points[2])
+        datamatrix.addPoint(points[3])
+        shapes.append(datamatrix)
+        bl = Shape(
+            label="bl",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        bl.addPoint(points[0])
+        shapes.append(bl)
+        br = Shape(
+            label="br",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        br.addPoint(points[1])
+        shapes.append(br)
+        tr = Shape(
+            label="tr",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        tr.addPoint(points[2])
+        shapes.append(tr)
+        tl = Shape(
+            label="tl",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        tl.addPoint(points[3])
+        shapes.append(tl)
+        timestamp += 1
 
-    shape.setShapeRefined(
-        shape_type="polygon",
-        points=points,
-        point_labels=[0, 1, 2, 3],
-        group_id=int(timestamp),
-    )
+    return shapes
 
 
 def _update_shape_with_sam(

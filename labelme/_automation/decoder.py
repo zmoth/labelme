@@ -38,8 +38,9 @@ def _qimage_to_pil_image(qimage: QImage):
 def decode_barcode(image: QImage):
     results = decode(
         image=_qimage_to_pil_image(image),
-        max_count=1,
     )
+
+    points_list: list[list[QtCore.QPoint]] = []
 
     for result in results:
         points = result.rect
@@ -51,5 +52,5 @@ def decode_barcode(image: QImage):
         bottom_right = QtCore.QPoint(
             points["10"]["x"], image.height() - points["10"]["y"]
         )
-        return [bottom_left, bottom_right, top_right, top_left]
-    return None
+        points_list.append([bottom_left, bottom_right, top_right, top_left])
+    return points_list
