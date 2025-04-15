@@ -479,16 +479,19 @@ class Canvas(QtWidgets.QWidget):
                             )
                             self.finalise()
                             # corner
+                            if not (self.shapes and len(self.shapes) > 0):
+                                return
                             s = self.shapes[-1]
-                            labels = ["bl", "br", "tr", "tl"]
-                            for index in s.point_labels:
-                                self.current = Shape(
-                                    label=labels[index],
-                                    shape_type="point",
-                                    group_id=s.group_id,
-                                )
-                                self.current.addPoint(s.points[index], 0)
-                                self.finalise()  # 如果是点直接结束
+                            if s.shape_type == "polygon" and len(s.point_labels) == 4:
+                                labels = ["bl", "br", "tr", "tl"]
+                                for index in s.point_labels:
+                                    self.current = Shape(
+                                        label=labels[index],
+                                        shape_type="point",
+                                        group_id=s.group_id,
+                                    )
+                                    self.current.addPoint(s.points[index], 0)
+                                    self.finalise()  # 如果是点直接结束
                             return
                         self.finalise()
                     elif self.createMode == "linestrip":
