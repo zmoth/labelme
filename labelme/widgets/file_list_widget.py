@@ -30,7 +30,7 @@ class FileListWidget(QtWidgets.QListWidget):
             self,
             self.tr("Delete"),
             self.delete_selected_items,
-            shortcuts["delete_polygon"],
+            None,
             "cancel",
         )
 

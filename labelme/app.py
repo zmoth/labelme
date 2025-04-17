@@ -259,7 +259,7 @@ class MainWindow(QtWidgets.QMainWindow):
         reflashFile = action(
             self.tr("Reflash"),
             self.reflashFile,
-            None,
+            QtGui.QKeySequence.StandardKey.Refresh,
             "reflash",
             self.tr("Reflash current file list"),
             enabled=False,
