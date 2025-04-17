@@ -7,6 +7,7 @@ from .brightness_contrast_dialog import BrightnessContrastDialog
 from .canvas import Canvas
 
 from .file_dialog_preview import FileDialogPreview
+from .file_list_widget import FileListWidget
 
 from .label_dialog import LabelDialog
 from .label_dialog import LabelQLineEdit
