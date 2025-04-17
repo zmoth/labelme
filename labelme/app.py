@@ -256,6 +256,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Open prev (hold Ctl+Shift to copy labels)"),
             enabled=False,
         )
+        reflashFile = action(
+            self.tr("Reflash"),
+            self.reflashFile,
+            None,
+            "reflash",
+            self.tr("Reflash current file list"),
+            enabled=False,
+        )
         save = action(
             self.tr("&Save\n"),
             self.saveFile,
@@ -650,6 +658,7 @@ class MainWindow(QtWidgets.QMainWindow):
             saveAuto=saveAuto,
             saveWithImageData=saveWithImageData,
             changeOutputDir=changeOutputDir,
+            reflashFile=reflashFile,
             save=save,
             saveAs=saveAs,
             open=open_,
@@ -764,6 +773,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 saveAuto,
                 changeOutputDir,
                 saveWithImageData,
+                reflashFile,
                 close,
                 deleteFile,
                 None,
@@ -863,6 +873,7 @@ class MainWindow(QtWidgets.QMainWindow):
             opendir,
             openPrevImg,
             openNextImg,
+            reflashFile,
             save,
             deleteFile,
             None,
@@ -1690,6 +1701,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.tr("Error opening file"),
                 self.tr("No such file: <b>%s</b>") % filename,
             )
+            self.reflashFile()
             return False
         # assumes same name, but json extension
         self.status(str(self.tr("Loading %s...")) % osp.basename(str(filename)))
@@ -2056,6 +2068,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         return label_file
 
+    def reflashFile(self):
+        self.importDirImages(self.lastOpenDir)
+
     def deleteFile(self):
         mb = QtWidgets.QMessageBox
         msg = self.tr(
@@ -2226,6 +2241,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         self.lastOpenDir = dirpath
+        self.actions.reflashFile.setEnabled(True)
         self.filename = None
         self.fileListWidget.clear()
 
