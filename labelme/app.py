@@ -428,6 +428,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Start drawing barcodes. Ctrl+LeftClick ends creation."),
             enabled=False,
         )
+        createAiBarcodeMode = action(
+            self.tr("Create AI-Barcode"),
+            lambda: self.toggleDrawMode(False, createMode="ai_barcode"),
+            None,
+            "objects",
+            self.tr("Start drawing ai_barcodes. Ctrl+LeftClick ends creation."),
+            enabled=False,
+        )
         editMode = action(
             self.tr("Edit Polygons"),
             self.setEditMode,
@@ -683,6 +691,7 @@ class MainWindow(QtWidgets.QMainWindow):
             createAiPolygonMode=createAiPolygonMode,
             createAiMaskMode=createAiMaskMode,
             createBarcodeMode=createBarcodeMode,
+            createAiBarcodeMode=createAiBarcodeMode,
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
@@ -722,6 +731,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 createAiPolygonMode,
                 createAiMaskMode,
                 createBarcodeMode,
+                createAiBarcodeMode,
                 editMode,
                 edit,
                 duplicate,
@@ -743,6 +753,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 createAiPolygonMode,
                 createAiMaskMode,
                 createBarcodeMode,
+                createAiBarcodeMode,
                 editMode,
                 brightnessContrast,
             ),
@@ -995,6 +1006,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.actions.createAiPolygonMode,  # type: ignore[attr-defined]
             self.actions.createAiMaskMode,  # type: ignore[attr-defined]
             self.actions.createBarcodeMode,  # type: ignore[attr-defined]
+            self.actions.createAiBarcodeMode,  # type: ignore[attr-defined]
             self.actions.editMode,  # type: ignore[attr-defined]
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)  # type: ignore[attr-defined]
@@ -1023,6 +1035,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.createMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createRectangleMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createBarcodeMode.setEnabled(True)  # type: ignore[attr-defined]
+        self.actions.createAiBarcodeMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createCircleMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createLineMode.setEnabled(True)  # type: ignore[attr-defined]
         self.actions.createPointMode.setEnabled(True)  # type: ignore[attr-defined]
@@ -1167,6 +1180,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "ai_polygon": self.actions.createAiPolygonMode,  # type: ignore[attr-defined]
             "ai_mask": self.actions.createAiMaskMode,  # type: ignore[attr-defined]
             "barcode": self.actions.createBarcodeMode,  # type: ignore[attr-defined]
+            "ai_barcode": self.actions.createAiBarcodeMode,  # type: ignore[attr-defined]
         }
 
         self.canvas.setEditing(edit)

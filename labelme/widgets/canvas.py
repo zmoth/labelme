@@ -67,6 +67,7 @@ class Canvas(QtWidgets.QWidget):
                 "ai_polygon": False,
                 "ai_mask": False,
                 "barcode": False,
+                "ai_barcode": False,
             },
         )
         super(Canvas, self).__init__(*args, **kwargs)
@@ -146,6 +147,7 @@ class Canvas(QtWidgets.QWidget):
             "ai_polygon",
             "ai_mask",
             "barcode",
+            "ai_barcode",
         ]:
             raise ValueError("Unsupported createMode: %s" % value)
         self._createMode = value
@@ -170,7 +172,7 @@ class Canvas(QtWidgets.QWidget):
         """Return the shape type for the current create mode."""
         if self.createMode in ["ai_polygon", "ai_mask"]:
             return "points"
-        elif self.createMode in ["barcode"]:
+        elif self.createMode in ["barcode", "ai_barcode"]:
             return "rectangle"  # 将二维码放入矩形框中
         else:
             return self.createMode
@@ -321,7 +323,7 @@ class Canvas(QtWidgets.QWidget):
                     self.current.point_labels[-1],
                     0 if is_shift_pressed else 1,
                 ]
-            elif self.createMode in ["rectangle", "barcode"]:
+            elif self.createMode in ["rectangle", "barcode", "ai_barcode"]:
                 self.line.points = [self.current[0], pos]
                 self.line.point_labels = [1, 1]
                 self.line.close()
@@ -468,7 +470,13 @@ class Canvas(QtWidgets.QWidget):
                         self.line[0] = self.current[-1]
                         if self.current.isClosed():
                             self.finalise()
-                    elif self.createMode in ["barcode", "rectangle", "circle", "line"]:
+                    elif self.createMode in [
+                        "barcode",
+                        "ai_barcode",
+                        "rectangle",
+                        "circle",
+                        "line",
+                    ]:
                         assert len(self.current.points) == 1
                         self.current.points = self.line.points
                         if self.createMode in ["barcode"]:
@@ -483,8 +491,20 @@ class Canvas(QtWidgets.QWidget):
                             for shape in shapes:
                                 self.current = shape
                                 self.finalise()
-                            return
-                        self.finalise()
+                        elif self.createMode in ["ai_barcode"]:
+                            shapes = _update_shape_with_yolo_decoder(
+                                shape=self.current,
+                                createMode=self.createMode,
+                                image=self.pixmap.toImage(),
+                            )
+                            if len(shapes) == 0:
+                                self.finalise()
+                                return
+                            for shape in shapes:
+                                self.current = shape
+                                self.finalise()
+                        else:
+                            self.finalise()
                     elif self.createMode == "linestrip":
                         self.current.addPoint(self.line[1])
                         self.line[0] = self.current[-1]
@@ -1114,6 +1134,72 @@ def _update_shape_with_decoder(
 
     shapes: list[Shape] = []
     results = decoder.decode_barcode(image=image.copy(shape.boundingRect().toRect()))
+
+    if results is None and len(results) == 0:
+        logger.warning("No points returned by decoder")
+        return shapes
+
+    p = shape.boundingRect().toRect().topLeft()
+    results = [[point + p for point in sublist] for sublist in results]
+
+    # 获取当前时间
+    now = datetime.now()
+    # 将当前时间转换为时间戳
+    timestamp = now.timestamp() * 1000
+    for points in results:
+        datamatrix = Shape(
+            label="datamatrix",
+            shape_type="polygon",
+            group_id=int(timestamp),
+        )
+        datamatrix.addPoint(points[0])
+        datamatrix.addPoint(points[1])
+        datamatrix.addPoint(points[2])
+        datamatrix.addPoint(points[3])
+        shapes.append(datamatrix)
+        bl = Shape(
+            label="bl",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        bl.addPoint(points[0])
+        shapes.append(bl)
+        br = Shape(
+            label="br",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        br.addPoint(points[1])
+        shapes.append(br)
+        tr = Shape(
+            label="tr",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        tr.addPoint(points[2])
+        shapes.append(tr)
+        tl = Shape(
+            label="tl",
+            shape_type="point",
+            group_id=int(timestamp),
+        )
+        tl.addPoint(points[3])
+        shapes.append(tl)
+        timestamp += 1
+
+    return shapes
+
+
+def _update_shape_with_yolo_decoder(
+    shape: Shape,
+    createMode: str,
+    image: QtGui.QImage,
+) -> list[Shape]:
+    if createMode not in ["ai_barcode"]:
+        raise ValueError(f"createMode must be 'ai_barcode', not {createMode}")
+
+    shapes: list[Shape] = []
+    results = decoder.yolo_barcode(image.copy(shape.boundingRect().toRect()))
 
     if results is None and len(results) == 0:
         logger.warning("No points returned by decoder")

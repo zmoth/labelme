@@ -13,6 +13,7 @@ pyinstaller labelme\__main__.py ^
   --add-data="%DMTX_PATH%\*.dll;pylibdmtx" ^
   --add-data="%LABELME_PATH%\config\default_config.yaml;labelme\config" ^
   --add-data="%LABELME_PATH%\icons\*;labelme\icons" ^
+  --add-data="%LABELME_PATH%\model\*;labelme\model" ^
   --add-data="%LABELME_PATH%\translate\*;translate" ^
   --icon="%LABELME_PATH%\icons\icon.png" ^
   --onefile

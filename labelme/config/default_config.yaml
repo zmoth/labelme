@@ -82,6 +82,7 @@ canvas:
     ai_polygon: false
     ai_mask: false
     barcode: true
+    ai_barcode: true
 
 shortcuts:
   close: Ctrl+W
