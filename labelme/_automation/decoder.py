@@ -71,22 +71,22 @@ model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(model_path)
 CLASSES = ["datamatrix", "qrcode", "1d", "pdf417", "aztec"]
 
 
-def convertQImageToMat(incomingImage):
+def convertQImageToMat(image: QImage):
     """Converts a QImage into an opencv MAT format"""
 
-    incomingImage = incomingImage.convertToFormat(QImage.Format_RGB888)
+    rgb_image = image.convertToFormat(QImage.Format_RGB888)
 
-    width = incomingImage.width()
-    height = incomingImage.height()
+    width = rgb_image.width()
+    height = rgb_image.height()
 
-    ptr = incomingImage.bits()
-    ptr.setsize(incomingImage.byteCount())
-    arr = np.array(ptr).reshape(height, width, 3)  #  Copies the data
+    ptr = rgb_image.bits()
+    ptr.setsize(rgb_image.bytesPerLine() * height)
+    arr = np.array(ptr).reshape(height, width, 3)
     return arr
 
 
 def yolo_barcode(image: QImage):
-    original_image = convertQImageToMat(image)
+    original_image: np.ndarray = convertQImageToMat(image)
     [height, width, _] = original_image.shape
 
     # Prepare a square image for inference
