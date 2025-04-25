@@ -11,6 +11,8 @@ import webbrowser
 import imgviz
 import natsort
 import numpy as np
+from PIL import Image
+from datetime import datetime
 from loguru import logger
 from PyQt5 import QtCore
 from PyQt5 import QtGui
@@ -25,6 +27,7 @@ from labelme.label_file import LabelFileError
 from labelme.shape import Shape
 from labelme.widgets import AiPromptWidget
 from labelme.widgets import BrightnessContrastDialog
+from labelme.widgets import CropDialog
 from labelme.widgets import Canvas
 from labelme.widgets import FileDialogPreview
 from labelme.widgets import FileListWidget
@@ -616,6 +619,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Adjust brightness and contrast"),
             enabled=False,
         )
+        crop = action(
+            self.tr("Crop"),
+            self.crop,
+            None,
+            "color",
+            self.tr("Crop Image"),
+            enabled=False,
+        )
         # Group zoom controls into a list for easier toggling.
         zoomActions = (
             self.zoomWidget,
@@ -700,6 +711,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fitWindow=fitWindow,
             fitWidth=fitWidth,
             brightnessContrast=brightnessContrast,
+            crop=crop,
             zoomActions=zoomActions,
             openNextImg=openNextImg,
             openPrevImg=openPrevImg,
@@ -756,6 +768,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 createAiBarcodeMode,
                 editMode,
                 brightnessContrast,
+                crop,
             ),
             onShapesPresent=(saveAs, hideAll, showAll, toggleAll),
         )
@@ -815,6 +828,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 fitWidth,
                 None,
                 brightnessContrast,
+                crop,
             ),
         )
 
@@ -894,6 +908,7 @@ class MainWindow(QtWidgets.QMainWindow):
             delete,
             undo,
             brightnessContrast,
+            crop,
             None,
             fitWindow,
             zoom,
@@ -1514,6 +1529,71 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             return False
 
+    def saveAsLabels(self, filename, image_name, img: Image.Image, crop=QtCore.QRect()):
+        lf = LabelFile()
+
+        def format_shape(s: Shape):
+            if crop.isEmpty() or crop.contains(s.boundingRect().toRect()):
+                data = s.other_data.copy()
+                data.update(
+                    dict(
+                        label=s.label,
+                        points=[(p.x() - crop.x(), p.y() - crop.y()) for p in s.points],
+                        group_id=s.group_id,
+                        description=s.description,
+                        shape_type=s.shape_type,
+                        flags=s.flags,
+                        mask=(
+                            None
+                            if s.mask is None
+                            else utils.img_arr_to_b64(s.mask.astype(np.uint8))
+                        ),
+                    )
+                )
+                return data
+            return None
+
+        shapes = []
+        for item in self.labelList:
+            shape = format_shape(item.shape())
+            if shape is not None:
+                shapes.append(shape)
+
+        flags = {}
+        for i in range(self.flag_widget.count()):  # type: ignore[union-attr]
+            item = self.flag_widget.item(i)  # type: ignore[union-attr]
+            key = item.text()  # type: ignore[union-attr]
+            flag = item.checkState() == Qt.CheckState.Checked  # type: ignore[attr-defined,union-attr]
+            flags[key] = flag
+        try:
+            imagePath = osp.relpath(image_name, osp.dirname(filename))
+            imageData = utils.img_pil_to_data(img)
+            if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
+                os.makedirs(osp.dirname(filename))
+            lf.save(
+                filename=filename,
+                shapes=shapes,
+                imagePath=imagePath,
+                imageData=imageData,
+                imageHeight=img.height,
+                imageWidth=img.width,
+                otherData=self.otherData,
+                flags=flags,
+            )
+            items = self.fileListWidget.findItems(self.imagePath, Qt.MatchFlag.MatchExactly)  # type: ignore[attr-defined]
+            if len(items) > 0:
+                if len(items) != 1:
+                    raise RuntimeError("There are duplicate files.")
+                items[0].setCheckState(Qt.CheckState.Checked)  # type: ignore[attr-defined]
+            # disable allows next and previous image to proceed
+            # self.filename = filename
+            return True
+        except LabelFileError as e:
+            self.errorMessage(
+                self.tr("Error saving label data"), self.tr("<b>%s</b>") % e
+            )
+            return False
+
     def duplicateSelectedShape(self):
         self.copySelectedShape()
         self.pasteSelectedShape()
@@ -1687,6 +1767,28 @@ class MainWindow(QtWidgets.QMainWindow):
         brightness = dialog.slider_brightness.value()
         contrast = dialog.slider_contrast.value()
         self.brightnessContrast_values[self.filename] = (brightness, contrast)
+
+    def crop(self, value):
+        dialog = CropDialog(
+            utils.img_data_to_pil(self.imageData),
+            parent=self,
+        )
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            if dialog.cropped_image:
+                current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                parent_dir = os.path.dirname(self.filename)
+                filename = os.path.join(parent_dir, f"{current_time}")
+
+                dialog.cropped_image.save(filename + ".png")
+                self.saveAsLabels(
+                    filename + ".json",
+                    filename + ".png",
+                    dialog.cropped_image,
+                    dialog.crop_rect,
+                )
+
+                logger.info(f"裁剪成功，已保存为 {filename + '.png'}")
+                self.reflashFile()
 
     def togglePolygons(self, value):
         flag = value
@@ -2083,7 +2185,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return label_file
 
     def reflashFile(self):
-        self.importDirImages(self.lastOpenDir)
+        self.importDirImages(self.lastOpenDir, load=False)
 
     def deleteFile(self):
         mb = QtWidgets.QMessageBox

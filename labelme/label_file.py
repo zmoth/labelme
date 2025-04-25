@@ -101,9 +101,11 @@ class LabelFile(object):
                     flags=s.get("flags", {}),
                     description=s.get("description"),
                     group_id=s.get("group_id"),
-                    mask=utils.img_b64_to_arr(s["mask"]).astype(bool)
-                    if s.get("mask")
-                    else None,
+                    mask=(
+                        utils.img_b64_to_arr(s["mask"]).astype(bool)
+                        if s.get("mask")
+                        else None
+                    ),
                     other_data={k: v for k, v in s.items() if k not in shape_keys},
                 )
                 for s in data["shapes"]
