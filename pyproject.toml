@@ -7,7 +7,7 @@ name = "labelme"
 description = "Image Polygonal Annotation with Python"
 license = { text = "GPL-3.0-only" }
 requires-python = ">=3.9"
-version = "5.8.2"
+version = "5.9.0"
 authors = [{ name = "Kentaro Wada", email = "www.kentaro.wada@gmail.com" }]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -36,6 +36,7 @@ dependencies = [
   "pyqt5-qt5!=5.15.11,!=5.15.12,!=5.15.13,!=5.15.14,!=5.15.15,!=5.15.16 ; sys_platform == 'win32'",
   "pyyaml",
   "scikit-image",
+  "opencv-python",
   "pylibdmtx@file:./pylibdmtx",
 ]
 

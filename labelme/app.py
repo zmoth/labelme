@@ -623,7 +623,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Crop"),
             self.crop,
             None,
-            "color",
+            "crop",
             self.tr("Crop Image"),
             enabled=False,
         )

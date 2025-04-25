@@ -33,7 +33,7 @@ setup_data = {
     "long_description_content_type": "text/x-rst",
     "packages": ["pylibdmtx", "pylibdmtx.scripts", "pylibdmtx.tests"],
     "package_data": {
-        "pylibdmtx": ["*.dll", "*LICENSE*"],  # 根据实际情况调整路径和模式
+        "pylibdmtx": ["*.dll", "*LICENSE*"],
     },
     "test_suite": "pylibdmtx.tests",
     "scripts": ["pylibdmtx/scripts/{0}.py".format(script) for script in SCRIPTS],
