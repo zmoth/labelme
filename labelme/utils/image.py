@@ -8,6 +8,7 @@ import numpy as np
 import PIL.ExifTags
 import PIL.Image
 import PIL.ImageOps
+from PyQt5.QtGui import QImage
 
 
 def img_data_to_pil(img_data):
@@ -29,7 +30,7 @@ def img_b64_to_arr(img_b64):
     return img_arr
 
 
-def img_pil_to_data(img_pil):
+def img_pil_to_data(img_pil: PIL.Image.Image):
     f = io.BytesIO()
     img_pil.save(f, format="PNG")
     img_data = f.getvalue()
@@ -59,7 +60,7 @@ def img_data_to_png_data(img_data):
             return f.read()
 
 
-def img_qt_to_arr(img_qt):
+def img_qt_to_arr(img_qt: QImage):
     w, h, d = img_qt.size().width(), img_qt.size().height(), img_qt.depth()
     bytes_ = img_qt.bits().asstring(w * h * d // 8)
     img_arr = np.frombuffer(bytes_, dtype=np.uint8).reshape((h, w, d // 8))

@@ -7,6 +7,8 @@ from PyQt5 import QtCore
 from PyQt5.QtGui import QImage
 from pylibdmtx.pylibdmtx import decode
 
+from labelme import utils
+
 
 def _qimage_to_pil_image(qimage: QImage):
     # 获取图像的宽度和高度
@@ -64,7 +66,7 @@ def decode_barcode(image: QImage):
 script_dir = osp.dirname(osp.abspath(__file__))
 # 构建模型文件的绝对路径
 model_path = osp.join(
-    os.path.dirname(script_dir), "model", "yolov8n-barcode-keypoint.onnx"
+    os.path.dirname(script_dir), "model", "yolo11s-barcode-keypoint.onnx"
 )
 model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(model_path)
 
@@ -86,11 +88,15 @@ def convertQImageToMat(image: QImage):
 
 
 def yolo_barcode(image: QImage):
-    original_image: np.ndarray = convertQImageToMat(image)
-    [height, width, _] = original_image.shape
+    # rgb_image = image.convertToFormat(QImage.Format_BGR888)
+    original_image = utils.img_qt_to_arr(image)
+    [height, width, depth] = original_image.shape
 
     # Prepare a square image for inference
     length = max((height, width))
+    if depth == 4:
+        original_image = original_image[:, :, :3]  # 去掉 Alpha 通道
+        depth = 3  # 更新通道数
     image = np.zeros((length, length, 3), np.uint8)
     image[0:height, 0:width] = original_image
 
