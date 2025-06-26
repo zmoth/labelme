@@ -688,8 +688,18 @@ class Canvas(QtWidgets.QWidget):
 
     def selectShapeRect(self, rect: QtCore.QRectF):
         selectedShapes = self.selectedShapes
+
+        def containsPoints(rect: QtCore.QRectF, points: QtCore.QPointF):
+            for point in points:
+                if not rect.contains(point):
+                    return False
+            return True
+
         for shape in reversed(self.shapes):
-            if self.isVisible(shape) and rect.contains(shape.boundingRect()):
+            if self.isVisible(shape) and (
+                rect.contains(shape.boundingRect())
+                or containsPoints(rect, shape.points)
+            ):
                 self.setHiding()
                 if shape not in self.selectedShapes:
                     selectedShapes.append(shape)

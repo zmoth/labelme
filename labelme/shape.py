@@ -352,9 +352,7 @@ class Shape(object):
                 self.mask.shape[1] - 1,
             )
             return self.mask[y, x]
-        if self.shape_type == "point":
-            return self._nearestVertex(point, 10) is not None
-        return self.makePath().contains(point)
+        return self._nearestVertex(point, 10) is not None
 
     def makePath(self) -> QtGui.QPainterPath:
         if self.shape_type in ["rectangle", "mask"]:
