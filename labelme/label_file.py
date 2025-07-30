@@ -93,23 +93,29 @@ class LabelFile(object):
                 data.get("imageHeight"),
                 data.get("imageWidth"),
             )
-            shapes = [
-                dict(
-                    label=s["label"],
-                    points=s["points"],
-                    shape_type=s.get("shape_type", "polygon"),
-                    flags=s.get("flags", {}),
-                    description=s.get("description"),
-                    group_id=s.get("group_id"),
-                    mask=(
-                        utils.img_b64_to_arr(s["mask"]).astype(bool)
-                        if s.get("mask")
-                        else None
-                    ),
-                    other_data={k: v for k, v in s.items() if k not in shape_keys},
-                )
-                for s in data["shapes"]
-            ]
+
+            if data["shapes"] is not None:
+                shapes = [
+                    dict(
+                        label=s["label"],
+                        points=s["points"],
+                        shape_type=s.get("shape_type", "polygon"),
+                        flags=s.get("flags", {}),
+                        description=s.get("description"),
+                        group_id=s.get("group_id"),
+                        mask=(
+                            utils.img_b64_to_arr(s["mask"]).astype(bool)
+                            if s.get("mask")
+                            else None
+                        ),
+                        other_data={k: v for k, v in s.items() if k not in shape_keys},
+                    )
+                    for s in data["shapes"]
+                    if "label" in s and "points" in s
+                ]
+            else:
+                shapes = []
+
         except Exception as e:
             raise LabelFileError(e)
 
