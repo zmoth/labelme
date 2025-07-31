@@ -80,12 +80,13 @@ class LabelFile(object):
             with open(filename, "r") as f:
                 data = json.load(f)
 
-            if data["imageData"] is not None:
-                imageData = base64.b64decode(data["imageData"])
-            else:
-                # relative path from label file to relative path from cwd
-                imagePath = osp.join(osp.dirname(filename), data["imagePath"])
-                imageData = self.load_image_file(imagePath)
+            # if data["imageData"] is not None:
+            #     imageData = base64.b64decode(data["imageData"])
+            # else:
+            # relative path from label file to relative path from cwd
+            imagePath = osp.join(osp.dirname(filename), data["imagePath"])
+            imageData = self.load_image_file(imagePath)
+
             flags = data.get("flags") or {}
             imagePath = data["imagePath"]
             self._check_image_height_and_width(
