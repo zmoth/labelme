@@ -1228,39 +1228,37 @@ def _update_shape_with_yolo_decoder(
             shape_type="polygon",
             group_id=int(timestamp),
         )
-        datamatrix.addPoint(points[0])
-        datamatrix.addPoint(points[1])
-        datamatrix.addPoint(points[2])
-        datamatrix.addPoint(points[3])
+        for point in points:
+            datamatrix.addPoint(point)
         shapes.append(datamatrix)
-        bl = Shape(
-            label="bl",
-            shape_type="point",
-            group_id=int(timestamp),
-        )
-        bl.addPoint(points[0])
-        shapes.append(bl)
-        br = Shape(
-            label="br",
-            shape_type="point",
-            group_id=int(timestamp),
-        )
-        br.addPoint(points[1])
-        shapes.append(br)
-        tr = Shape(
-            label="tr",
-            shape_type="point",
-            group_id=int(timestamp),
-        )
-        tr.addPoint(points[2])
-        shapes.append(tr)
-        tl = Shape(
-            label="tl",
-            shape_type="point",
-            group_id=int(timestamp),
-        )
-        tl.addPoint(points[3])
-        shapes.append(tl)
+        # bl = Shape(
+        #     label="bl",
+        #     shape_type="point",
+        #     group_id=int(timestamp),
+        # )
+        # bl.addPoint(points[0])
+        # shapes.append(bl)
+        # br = Shape(
+        #     label="br",
+        #     shape_type="point",
+        #     group_id=int(timestamp),
+        # )
+        # br.addPoint(points[1])
+        # shapes.append(br)
+        # tr = Shape(
+        #     label="tr",
+        #     shape_type="point",
+        #     group_id=int(timestamp),
+        # )
+        # tr.addPoint(points[2])
+        # shapes.append(tr)
+        # tl = Shape(
+        #     label="tl",
+        #     shape_type="point",
+        #     group_id=int(timestamp),
+        # )
+        # tl.addPoint(points[3])
+        # shapes.append(tl)
         timestamp += 1
 
     return shapes

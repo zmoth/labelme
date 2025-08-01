@@ -65,9 +65,7 @@ def decode_barcode(image: QImage):
 # 获取当前脚本所在的目录
 script_dir = osp.dirname(osp.abspath(__file__))
 # 构建模型文件的绝对路径
-model_path = osp.join(
-    os.path.dirname(script_dir), "model", "yolo11s-barcode-keypoint.onnx"
-)
+model_path = osp.join(os.path.dirname(script_dir), "model", "yolov8n-barcode-seg.onnx")
 model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(model_path)
 
 CLASSES = ["datamatrix", "qrcode", "1d", "pdf417", "aztec"]
@@ -110,38 +108,47 @@ def yolo_barcode(image: QImage):
     model.setInput(blob)
 
     # Perform inference
-    outputs = model.forward()
+    output0, output1 = model.forward(["output0", "output1"])
 
-    # Prepare output array
-    outputs = np.array([cv2.transpose(outputs[0])])
-    rows = outputs.shape[1]
+    # 获取检测框数量
+    rows = output0.shape[2]
 
     boxes = []
     scores = []
     class_ids = []
-    keypoints = []
+    masks = []
 
-    # Iterate through output to collect bounding boxes, confidence scores, and class IDs
+    # 遍历所有检测框
     for i in range(rows):
-        classes_scores = outputs[0][i][4:9]
-        keypoint = outputs[0][i][9:]
+        # 提取检测框信息：x, y, w, h
+        x = output0[0, 0, i]
+        y = output0[0, 1, i]
+        w = output0[0, 2, i]
+        h = output0[0, 3, i]
+
+        # 提取对象置信度和类别得分
+        class_scores = output0[0, 4:9, i]  # 假设模型为80类
+
         (minScore, maxScore, minClassLoc, (x, maxClassIndex)) = cv2.minMaxLoc(
-            classes_scores
+            class_scores
         )
+
         if maxScore >= 0.25:
-            box = [
-                outputs[0][i][0] - (0.5 * outputs[0][i][2]),
-                outputs[0][i][1] - (0.5 * outputs[0][i][3]),
-                outputs[0][i][2],
-                outputs[0][i][3],
-            ]
+            # 转换为左上角坐标 + 宽高
+            box = [x - w / 2, y - h / 2, w, h]
             boxes.append(box)
             scores.append(maxScore)
             class_ids.append(maxClassIndex)
-            keypoints.append(keypoint)
+
+            # 生成分割掩码（简化版，具体逻辑取决于模型结构）
+            seg_params = output0[0, 9:41, i]
+            feature_map = output1[0]  # shape: [32, 160, 160]
+            seg_mask = np.dot(seg_params, feature_map.reshape(32, -1))
+            seg_mask = np.reshape(seg_mask, (160, 160))
+            masks.append(seg_mask)
 
     # Apply NMS (Non-maximum suppression)
-    result_boxes = cv2.dnn.NMSBoxes(boxes, scores, 0.25, 0.45, 0.5)
+    result_boxes = cv2.dnn.NMSBoxes(boxes, scores, 0.5, 0.5)
 
     points_list = []
 
@@ -149,28 +156,39 @@ def yolo_barcode(image: QImage):
     for i in range(len(result_boxes)):
         index = result_boxes[i]
         box = boxes[index]
+        mask = masks[index]
 
-        if (
-            keypoints[index][2] < 0.5
-            or keypoints[index][5] < 0.5
-            or keypoints[index][8] < 0.5
-            or keypoints[index][11] < 0.5
-        ):
+        # 1. 归一化与二值化
+        mask_normalized = cv2.normalize(
+            mask, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8UC1
+        )
+        _, mask_binary = cv2.threshold(mask_normalized, 127, 255, cv2.THRESH_BINARY)
+
+        # 2. 尺寸调整
+        mask_resized = cv2.resize(mask_binary, (width, height))
+
+        # 3. 提取轮廓
+        contours, _ = cv2.findContours(
+            mask_resized, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        # 4. 筛选并提取轮廓点
+        max_contour = None
+        max_area = 0
+
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area > max_area:
+                max_area = area
+                max_contour = contour
+
+        if max_contour is None:
             continue
 
-        bottom_left = QtCore.QPoint(
-            int(keypoints[index][0] * scale), int(keypoints[index][1] * scale)
-        )
-        top_left = QtCore.QPoint(
-            int(keypoints[index][3] * scale), int(keypoints[index][4] * scale)
-        )
-        top_right = QtCore.QPoint(
-            int(keypoints[index][6] * scale), int(keypoints[index][7] * scale)
-        )
-        bottom_right = QtCore.QPoint(
-            int(keypoints[index][9] * scale), int(keypoints[index][10] * scale)
-        )
+        # 转换为二维点列表
+        points = max_contour.reshape(-1, 2).tolist()
 
-        points_list.append([bottom_left, bottom_right, top_right, top_left])
+        # # 转换为 QPoint 列表
+        points_list.append([QtCore.QPoint(int(x), int(y)) for x, y in points])
 
     return points_list
